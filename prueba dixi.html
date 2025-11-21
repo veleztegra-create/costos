@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Especificación Técnica de Impresión</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .section {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+        }
+        .section-title {
+            background-color: #f0f0f0;
+            padding: 5px 10px;
+            margin: -15px -15px 15px -15px;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+        }
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .btn-secondary {
+            background-color: #008CBA;
+        }
+        .btn-secondary:hover {
+            background-color: #007B9A;
+        }
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        .file-upload {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px dashed #ccc;
+            text-align: center;
+        }
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .image-upload-area {
+            border: 2px dashed #4CAF50;
+            padding: 20px;
+            text-align: center;
+            border-radius: 4px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 15px;
+            display: none;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .color-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .print-sequence {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .station {
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .station-header {
+            background-color: #e0e0e0;
+            padding: 5px;
+            margin: -10px -10px 10px -10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .station-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        .station-label {
+            flex: 1;
+            font-weight: bold;
+        }
+        .station-value {
+            flex: 2;
+        }
+        #logosContainer {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        #logoTegra, #logoCliente {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Logos SVG -->
+    <div id="logosContainer">
+        <!-- Logo TEGRA (siempre visible) -->
+        <svg id="logoTegra" width="180" height="50" viewBox="0 0 145.94 39.05" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#606060" d="M42.24,12.37v1.93h6.91v15.25h4.21v-15.25h6.91v-3.88h-16.1l-1.93,1.95ZM92.06,20.31v1.87h4.24v2.73c-.53.38-1.13.67-1.8.86-.67.19-1.39.29-2.16.29-.84,0-1.61.15-2.32-.45-.71-.3-1.33-.72-1.84-1.27-.52-.55-.92-1.19-1.2-1.93-.28-.74-.42-1.54-.42-2.42v-.05c0-.82.14-1.59.42-2.31.28-.72.67-1.35,1.18-1.89.5-.54,1.08-.97,1.75-1.28.66-.32,1.38-.48,2.15-.48.55,0,1.05.05,1.5.14.46.09.88.22,1.27.38.39.16.77.36,1.13.6.25.16.49.34.74.54l2.94-2.97c-.47-.4-.96-.75-1.46-1.07-.53-.33-1.09-.6-1.7-.82-.6-.22-1.25-.39-1.95-.51-.7-.12-1.48-.18-2.34-.18-1.44,0-2.77.26-4,.78-1.23.52-2.29,1.23-3.18,2.13-.89.9-1.59,1.95-2.09,3.14-.5,1.19-.75,2.47-.75,3.84v.05c0,1.42.25,2.73.74,3.94.49,1.2,1.18,2.24,2.06,3.12.88.87,1.94,1.56,3.17,2.05,1.23.49,2.59.74,4.09.74,1.75,0,3.3-.3,4.66-.89,1.36-.59,2.53-1.31,3.51-2.15v-8.31h-6.56l-1.74,1.76ZM68.15,21.8h9.02v-3.74h-9.02v-3.88h10.25v-3.74h-12.55l-1.86,1.88v17.26h14.54v-3.74h-10.39v-4.02ZM114.24,10.43h-8.75v19.13h4.21v-6.12h3.31l4.1,6.12h2.57l1.39-1.4-3.71-5.43c1.22-.46,2.21-1.17,2.97-2.15.76-.97,1.13-2.24,1.13-3.79v-.05c0-1.82-.55-3.28-1.64-4.37-1.29-1.29-3.15-1.94-5.58-1.94ZM117.19,17.03c0,.82-.28,1.48-.83,1.98-.56.49-1.35.74-2.39.74h-4.26v-5.52h4.18c1.04,0,1.85.23,2.43.69.58.46.87,1.14.87,2.06v.05ZM136.7,10.29h-3.88l-8.2,19.27h4.29l1.75-4.29h8.09l1.75,4.29h1.97l1.7-1.72-7.47-17.55ZM132.16,21.58l2.54-6.2,2.54,6.2h-5.08Z"/>
+            <g><polygon fill="#606060" points="7.44 31.38 6.59 32.24 6.88 33.39 8.03 33.68 8.89 32.83 8.59 31.68 7.44 31.38"/><polygon fill="#606060" points="6.79 28.67 7.94 28.97 10.41 26.5 10.11 25.35 8.96 25.05 6.49 27.52 6.79 28.67"/><polygon fill="#606060" points="10.54 14.61 9.4 14.31 6.93 16.78 7.23 17.93 8.37 18.23 10.85 15.76 10.54 14.61"/><polygon fill="#606060" points="26.38 22.79 25.06 24.11 25.36 25.26 26.5 25.56 27.82 24.24 27.52 23.09 26.38 22.79"/><path fill="#606060" d="M21.9,36.93l.3,1.15,1.15.3.85-.85-.3-1.15-1.15-.3-.85.85ZM18.01,29.21l-.3-1.15.85-.85,1.15.3.3,1.15-.85.85-1.15-.3ZM18.83,19.56l-.3-1.15,1.5-1.5,1.15.3.3,1.15-1.5,1.5-1.15-.3ZM20.85,14.61l-.3-1.15,1.5-1.5,1.15.3.3,1.15-1.5,1.5-1.15-.3ZM14.33,15.34l-.3-1.14,3.78-3.68,1.14.3.3,1.14-3.78,3.68-1.15-.3ZM24.21,10.68l-.3-1.15,2.17-2.17,1.14.3.3,1.14-2.17,2.17-1.14-.3ZM20.59,9.12l-.3-1.15.85-.85,1.15.3.3,1.15-.85.85-1.15-.3ZM15.06,8.82l-.3-1.15,1.5-1.5,1.15.3.3,1.15-1.5,1.5-1.15-.3ZM25.51,0l-4.9,4.9-1.14-.3-.3-1.14,3.46-3.46H0v9.55h4.54l-1.67,1.67.3,1.14,1.15.3,3.12-3.12h.02l2.59-2.59,1.14.3.3,1.14-.57.57-1.81,1.78.3,1.15,1.15.3,2.5-2.45v8.41l-3.99,3.99.3,1.15,1.15.3,4.62-4.62,1.07.28.3,1.15-1.42,1.42-.93.93-.84.84-1.78,1.78.3,1.15,1.14.3,3.56-3.56.27-.27,1.14.3.3,1.14-4.64,4.64h-.03s-2.52,2.51-2.52,2.51l.31,1.16,1.17.31,2.52-2.52h0s.3-.32.3-.32l1.14.3.3,1.15-3.75,3.75h0s-2.17,2.18-2.17,2.18l.3,1.14,1.15.3,6.35-6.35,1.14.3.3,1.15-2.82,2.77.3,1.14,1.15.3,5.15-5.1v-2.89h0s-1.24,1.24-1.24,1.24l-1.15-.3-.3-1.14,3.43-3.41-.3-1.15-.45-.12-.71-.19-1.05,1.05-1.14-.3-.3-1.14,6.16-6.31-.3-1.15-1.14-.3-1.51,1.51v-4.34l5.25-4.76h7.28V0h-10.92Z"/></g>
+        </svg>
+
+        <!-- Logo dinámico (Nike / Fanatics) -->
+        <svg id="logoCliente" width="120" height="40" style="margin-left:20px;" viewBox="0 0 98.07 35.18" xmlns="http://www.w3.org/2000/svg">
+            <!-- Default vacío -->
+        </svg>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div class="title">TECHNICAL SPEC / ESPECIFICACION TECNICA</div>
+            <div class="update-info">
+                ACTUALIZACIÓN: <span id="update-date">##/XXX/2025</span>
+                HORA: <span id="update-time">##:## xm</span>
+            </div>
+        </div>
+
+        <div class="section no-print">
+            <div class="section-title">GESTIÓN DE ARCHIVOS</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <button class="btn" onclick="saveSpec()">💾 Guardar spec</button>
+                    <button class="btn btn-secondary" onclick="loadSpec()">📁 Cargar spec</button>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-warning" onclick="loadExcelData()">📊 Cargar desde Excel</button>
+                    <button class="btn" onclick="exportPDF()">📄 Exportar PDF</button>
+                    <button class="btn btn-secondary" onclick="showSavedSpecs()">📂 Ver specs guardadas</button>
+                </div>
+            </div>
+            <div class="file-upload">
+                <input type="file" id="excelFile" accept=".xlsx, .xls" style="margin-bottom: 10px;">
+                <div id="statusMessage" class="status-message"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">INFORMACIÓN GENERAL</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="customer">CUSTOMER / CLIENTE:</label>
+                    <input type="text" id="customer" value="" oninput="updateClientLogo()">
+                </div>
+                <div class="form-group">
+                    <label for="style"># STYLE / # Estilo:</label>
+                    <input type="text" id="style" value="" onchange="decodeStyleInfo()">
+                </div>
+                <div class="form-group">
+                    <label for="colorway">COLORWAY / Color de Tela:</label>
+                    <input type="text" id="colorway" value="">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="season">SEASON / Temporada:</label>
+                    <input type="text" id="season" value="">
+                </div>
+                <div class="form-group">
+                    <label for="pattern">PATTERN #:</label>
+                    <input type="text" id="pattern" value="">
+                </div>
+                <div class="form-group">
+                    <label for="po">P.O. # :</label>
+                    <input type="text" id="po" value="">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="sample-type">SAMPLE TYPE:</label>
+                    <input type="text" id="sample-type" value="">
+                </div>
+                <div class="form-group">
+                    <label for="name-team">NAME / TEAM / Nombre / Equipo:</label>
+                    <input type="text" id="name-team" value="">
+                </div>
+                <div class="form-group">
+                    <label for="gender">GENDER / Genero:</label>
+                    <input type="text" id="gender" value="">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">IMAGEN DE REFERENCIA</div>
+            <div class="image-upload-area" onclick="document.getElementById('imageInput').click()">
+                <p>📁 Haz clic aquí o arrastra una imagen para agregarla</p>
+                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            </div>
+            <img id="imagePreview" class="image-preview" alt="Vista previa de la imagen">
+        </div>
+
+        <div class="section">
+            <div class="section-title">CONFIGURACIÓN DE COLORES</div>
+            <div class="colors-config">
+                <button class="btn" onclick="addColorItem('BLOCKER')">+ Bloqueador</button>
+                <button class="btn btn-secondary" onclick="addColorItem('WHITE_BASE')">+ White Base</button>
+                <button class="btn" onclick="addColorItem('COLOR')">+ Color</button>
+                <div id="colors-container"></div>
+                <button class="btn" onclick="updateStations()">🔄 Actualizar Estaciones</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">PRINT SEQUENCE / SECUENCIA DE IMPRESIÓN  
+                <button class="btn no-print" onclick="updateStations()">🔄 Actualizar</button>
+            </div>
+            <div id="print-sequence-table">
+                <!-- tabla compacta -->
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">CONDICIONES DE IMPRESIÓN</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="ink-type-select">TIPO DE TINTA (Water / Plastisol / Silicone):</label>
+                    <select id="ink-type-select" onchange="applyInkPreset()">
+                        <option value="WATER">Water-base</option>
+                        <option value="PLASTISOL">Plastisol</option>
+                        <option value="SILICONE">Silicone</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ink-type">INK TYPE / TIPO DE TINTA:</label>
+                    <input type="text" id="ink-type" value="AQUAFLEX MAGNA">
+                </div>
+                <div class="form-group">
+                    <label for="temp">TEMP / TEMP:</label>
+                    <input type="text" id="temp" value="320 °F">
+                </div>
+                <div class="form-group">
+                    <label for="time">TIME / TIEMPO:</label>
+                    <input type="text" id="time" value="45 segundos">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="dimensions">DIMENSIONS:</label>
+                    <input type="text" id="dimensions" value="SIZE: (W) ##\" X (H) ##\"">
+                </div>
+                <div class="form-group">
+                    <label for="placement">PLACEMENT:</label>
+                    <input type="text" id="placement" value="#.#\" FROM COLLAR SEAM TO TOP OF ARTWORK.">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="special-instructions">SPECIAL INSTRUCTIONS (Screenprint / Twill only):</label>
+                    <textarea id="special-instructions" rows="3" placeholder="Ej: Screenprint 26 player number..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="section no-print">
+            <div class="section-title">ACCIONES</div>
+            <button class="btn" onclick="updateDateTime()">🕐 Actualizar Fecha/Hora</button>
+        </div>
+    </div>
+
+    <script>
+        // ----------  EXTRACT EXCEL  ----------
+        function loadExcelData() {
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+            if (!file) { showStatus('Selecciona un archivo Excel', 'error'); return; }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    processExcelData(worksheet);
+                    showStatus('✅ Datos cargados correctamente desde el Excel.', 'success');
+                } catch (err) {
+                    showStatus('❌ Error al leer el Excel: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelData(worksheet) {
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            const data = [];
+            for (let r = range.s.r; r <= range.e.r; r++) {
+                const row = [];
+                for (let c = range.s.c; c <= range.e.c; c++) {
+                    const cell = worksheet[XLSX.utils.encode_cell({ r, c })];
+                    row.push(cell ? cell.v : '');
+                }
+                data.push(row);
+            }
+            let customer = '', style = '', colorway = '', season = '', pattern = '', po = '', sampleType = '';
+            for (let i = 0; i < data.length; i++) {
+                const row = data[i];
+                for (let j = 0; j < row.length; j++) {
+                    const val = String(row[j] || '').trim();
+                    if (val === 'CUSTOMER:') customer = String(row[j + 1] || '').trim();
+                    if (val === 'STYLE:') style = String(row[j + 1] || '').trim();
+                    if (val === 'COLORWAY #') colorway = String(row[j + 1] || '').trim();
+                    if (val === 'SEASON:') season = String(row[j + 1] || '').trim();
+                    if (val === 'PATTERN #:') pattern = String(row[j + 1] || '').trim();
+                    if (val === 'P.O. # :') po = String(row[j + 1] || '').trim();
+                    if (val === 'SAMPLE TYPE:') sampleType = String(row[j + 1] || '').trim();
+                }
+            }
+            if (customer) document.getElementById('customer').value = customer;
+            if (style) {
+                document.getElementById('style').value = style;
+                setTimeout(() => decodeStyleInfo(), 100);
+            }
+            if (colorway) document.getElementById('colorway').value = colorway;
+            if (season) document.getElementById('season').value = season;
+            if (pattern) document.getElementById('pattern').value = pattern;
+            if (po) document.getElementById('po').value = po;
+            if (sampleType) document.getElementById('sample-type').value = sampleType;
+            updateClientLogo();
+        }
+
+        // ----------  IMAGE HANDLER  ----------
+        document.getElementById('imageInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const preview = document.getElementById('imagePreview');
+                preview.src = ev.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // ----------  COLOR SEQUENCE  ----------
+        let colorSequence = [];
+        function addColorItem(type) {
+            const id = Date.now();
+            colorSequence.push({ id, type });
+            renderColors();
+            updateStations();
+        }
+        function removeColorItem(id) {
+            colorSequence = colorSequence.filter(item => item.id !== id);
+            renderColors();
+            updateStations();
+        }
+        function renderColors() {
+            const valores = {};
+            colorSequence.forEach(item => {
+                const input = document.getElementById(`ink-${item.id}`);
+                if (input) valores[item.id] = input.value;
+            });
+            const container = document.getElementById('colors-container');
+            container.innerHTML = '';
+            colorSequence.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'color-item';
+                div.innerHTML = `
+                    <strong>${item.type.replace('_', ' ')}</strong>
+                    <input type="text" placeholder="Nombre tinta" id="ink-${item.id}" onchange="updateStations()">
+                    <button class="btn btn-danger" onclick="removeColorItem(${item.id})">✕</button>
+                `;
+                container.appendChild(div);
+                if (valores[item.id] !== undefined) {
+                    document.getElementById(`ink-${item.id}`).value = valores[item.id];
+                }
+            });
+            assignLettersNumbers();
+        }
+        function assignLettersNumbers() {
+            const presets = getPresets();
+            const type = document.getElementById('ink-type-select').value;
+            let letter = 'A';
+            let number = 1;
+            colorSequence.forEach(item => {
+                const input = document.getElementById(`ink-${item.id}`);
+                if (!input) return;
+                if (item.type === 'BLOCKER' || item.type === 'WHITE_BASE') {
+                    input.value = letter++;
+                } else if (item.type === 'COLOR') {
+                    input.value = number++;
+                }
+            });
+        }
+
+        // ----------  STATIONS  ----------
+        function updateStations() {
+            const presets = getPresets();
+            const type = document.getElementById('ink-type-select').value;
+            const stations = [];
+            let stationNumber = 1;
+            colorSequence.forEach((item, index) => {
+                const inkName = document.getElementById(`ink-${item.id}`)?.value || item.type;
+                let mesh = '', additives = '';
+                if (item.type === 'BLOCKER') {
+                    mesh = stationNumber <= 3 ? presets[type].blocker.mesh1 : presets[type].blocker.mesh2;
+                    additives = presets[type].blocker.additives;
+                } else if (item.type === 'WHITE_BASE') {
+                    mesh = stationNumber <= 9 ? presets[type].white.mesh1 : presets[type].white.mesh2;
+                    additives = presets[type].white.additives;
+                } else if (item.type === 'COLOR') {
+                    mesh = presets[type].color.mesh;
+                    additives = presets[type].color.additives;
+                }
+                stations.push({
+                    station: stationNumber++,
+                    name: item.type === 'BLOCKER' ? 'BLOCKER' : item.type === 'WHITE_BASE' ? 'WHITE BASE' : 'COLOR',
+                    mesh: mesh,
+                    ink: inkName,
+                    angle: '2',
+                    strokes: item.type === 'BLOCKER' ? presets[type].blocker.strokes : item.type === 'WHITE_BASE' ? presets[type].white.strokes : presets[type].color.strokes,
+                    pressure: '70',
+                    speed: '70',
+                    durometer: item.type === 'BLOCKER' ? presets[type].blocker.durometer : item.type === 'WHITE_BASE' ? presets[type].white.durometer : presets[type].color.durometer,
+                    additives: additives
+                });
+                if (index < colorSequence.length - 1) {
+                    stations.push({
+                        station: stationNumber++,
+                        name: 'FLASH',
+                        mesh: 'N/A', ink: 'N/A', angle: 'N/A', strokes: 'N/A', pressure: 'N/A', speed: 'N/A', durometer: 'N/A', additives: ''
+                    });
+                    stations.push({
+                        station: stationNumber++,
+                        name: 'COOL',
+                        mesh: 'N/A', ink: 'N/A', angle: 'N/A', strokes: 'N/A', pressure: 'N/A', speed: 'N/A', durometer: 'N/A', additives: ''
+                    });
+                }
+            });
+            generateStationsTable(stations);
+        }
+        function generateStationsTable(stationsData) {
+            const div = document.getElementById('print-sequence-table');
+            if (!stationsData || stationsData.length === 0) {
+                div.innerHTML = '<p>No hay estaciones configuradas.</p>';
+                return;
+            }
+            let html = `
+                <table style="width:100%; font-size:11px; border-collapse:collapse; margin-top:10px;">
+                    <thead>
+                        <tr style="background:#f0f0f0;">
+                            <th>Est</th><th>Screen</th><th>Mesh</th><th>Ink Name</th><th>Angle</th><th>Strokes</th><th>Pressure</th><th>Speed</th><th>Durometer</th><th>Additives</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            stationsData.forEach((st) => {
+                html += `
+                    <tr>
+                        <td style="text-align:center;">${st.station}</td>
+                        <td>${st.name}</td>
+                        <td>${st.mesh}</td>
+                        <td>${st.ink}</td>
+                        <td>${st.angle}</td>
+                        <td>${st.strokes}</td>
+                        <td>${st.pressure}</td>
+                        <td>${st.speed}</td>
+                        <td>${st.durometer}</td>
+                        <td style="color:green; font-size:10px;">${st.additives}</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table>`;
+            div.innerHTML = html;
+        }
+
+        // ----------  PRESETS  ----------
+        const INK_PRESETS = {
+            WATER: {
+                temp: '320 °F',
+                time: '1:40 min',
+                blocker: {
+                    name: 'BLOCKER rubber black',
+                    mesh1: '122/55',
+                    mesh2: '157/48',
+                    durometer: '70',
+                    strokes: '2',
+                    additives: '3 % cross-linker 500 · 1.5 % antitack'
+                },
+                white: {
+                    name: 'AQUAFLEX WHITE',
+                    mesh1: '198/40',
+                    mesh2: '157/48',
+                    durometer: '70',
+                    strokes: '2',
+                    additives: '3 % cross-linker 500 · 1.5 % antitack'
+                },
+                color: {
+                    mesh: '157/48',
+                    durometer: '70',
+                    strokes: '2',
+                    additives: '3 % cross-linker 500 · 1.5 % antitack'
+                }
+            },
+            PLASTISOL: {
+                temp: '320 °F',
+                time: '0:45 min',
+                blocker: {
+                    name: 'BLOCKER plastisol',
+                    mesh1: '110/64',
+                    mesh2: '156/64',
+                    durometer: '65',
+                    strokes: '1',
+                    additives: '1 % catalyst'
+                },
+                white: {
+                    name: 'PLASTISOL WHITE',
+                    mesh1: '156/64',
+                    mesh2: '110/64',
+                    durometer: '65',
+                    strokes: '1',
+                    additives: '1 % catalyst'
+                },
+                color: {
+                    mesh: '156/64',
+                    durometer: '65',
+                    strokes: '1',
+                    additives: '1 % catalyst'
+                }
+            },
+            SILICONE: {
+                temp: '320 °F',
+                time: '1:40 min',
+                blocker: {
+                    name: 'BLOCKER silicone',
+                    mesh1: '110/64',
+                    mesh2: '157/48',
+                    durometer: '70',
+                    strokes: '2',
+                    additives: '3 % catalizador · 2 % retardante'
+                },
+                white: {
+                    name: 'WHITE LIBRA',
+                    mesh1: '122/55',
+                    mesh2: '157/48',
+                    durometer: '70',
+                    strokes: '2',
+                    additives: '3 % catalizador · 2 % retardante'
+                },
+                color: {
+                    mesh: '157/48',
+                    durometer: '70',
+                    strokes: '2',
+                    additives: '3 % catalizador · 2 % retardante'
+                }
+            }
+        };
+
+        function getPresets() {
+            const saved = localStorage.getItem('tegra_ink_presets');
+            return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(INK_PRESETS));
+        }
+
+        function savePresetsToLocal() {
+            const presets = {};
+            ['WATER', 'PLASTISOL', 'SILICONE'].forEach(type => {
+                presets[type] = {
+                    temp: document.getElementById(`preset_${type}_temp`).value,
+                    time: document.getElementById(`preset_${type}_time`).value,
+                    blocker: {
+                        name: document.getElementById(`preset_${type}_blocker_name`).value,
+                        mesh1: document.getElementById(`preset_${type}_blocker_mesh1`).value,
+                        mesh2: document.getElementById(`preset_${type}_blocker_mesh2`).value,
+                        durometer: document.getElementById(`preset_${type}_blocker_durometer`).value,
+                        strokes: document.getElementById(`preset_${type}_blocker_strokes`).value,
+                        additives: document.getElementById(`preset_${type}_blocker_additives`).value
+                    },
+                    white: {
+                        name: document.getElementById(`preset_${type}_white_name`).value,
+                        mesh1: document.getElementById(`preset_${type}_white_mesh1`).value,
+                        mesh2: document.getElementById(`preset_${type}_white_mesh2`).value,
+                        durometer: document.getElementById(`preset_${type}_white_durometer`).value,
+                        strokes: document.getElementById(`preset_${type}_white_strokes`).value,
+                        additives: document.getElementById(`preset_${type}_white_additives`).value
+                    },
+                    color: {
+                        mesh: document.getElementById(`preset_${type}_color_mesh`).value,
+                        durometer: document.getElementById(`preset_${type}_color_durometer`).value,
+                        strokes: document.getElementById(`preset_${type}_color_strokes`).value,
+                        additives: document.getElementById(`preset_${type}_color_additives`).value
+                    }
+                };
+            });
+            localStorage.setItem('tegra_ink_presets', JSON.stringify(presets));
+            Object.assign(INK_PRESETS, presets);
+            applyInkPreset();
+            showStatus('✅ Presets guardados localmente', 'success');
+        }
+
+        function togglePresetEditor() {
+            const div = document.getElementById('presetEditor');
+            div.style.display = div.style.display === 'none' ? 'block' : 'none';
+            if (div.style.display === 'block') renderPresetForm();
+        }
+
+        function renderPresetForm() {
+            const presets = getPresets();
+            let html = '';
+            ['WATER', 'PLASTISOL', 'SILICONE'].forEach(type => {
+                const p = presets[type];
+                html += `<h4>${type}</h4>
+                    <div class="form-row">
+                        <div class="form-group"><label>Temperatura</label><input id="preset_${type}_temp" value="${p.temp}"></div>
+                        <div class="form-group"><label>Tiempo</label><input id="preset_${type}_time" value="${p.time}"></div>
+                    </div>
+                    <h5>Bloqueador</h5>
+                    <div class="form-row">
+                        <div class="form-group"><label>Nombre</label><input id="preset_${type}_blocker_name" value="${p.blocker.name}"></div>
+                        <div class="form-group"><label>Mesh 1ª estación</label><input id="preset_${type}_blocker_mesh1" value="${p.blocker.mesh1}"></div>
+                        <div class="form-group"><label>Mesh 2ª estación</label><input id="preset_${type}_blocker_mesh2" value="${p.blocker.mesh2}"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Durometer</label><input id="preset_${type}_blocker_durometer" value="${p.blocker.durometer}"></div>
+                        <div class="form-group"><label>Pasadas</label><input id="preset_${type}_blocker_strokes" value="${p.blocker.strokes}"></div>
+                        <div class="form-group"><label>Additivos</label><input id="preset_${type}_blocker_additives" value="${p.blocker.additives}"></div>
+                    </div>
+                    <h5>White Base</h5>
+                    <div class="form-row">
+                        <div class="form-group"><label>Nombre</label><input id="preset_${type}_white_name" value="${p.white.name}"></div>
+                        <div class="form-group"><label>Mesh 1ª estación</label><input id="preset_${type}_white_mesh1" value="${p.white.mesh1}"></div>
+                        <div class="form-group"><label>Mesh 2ª estación</label><input id="preset_${type}_white_mesh2" value="${p.white.mesh2}"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Durometer</label><input id="preset_${type}_white_durometer" value="${p.white.durometer}"></div>
+                        <div class="form-group"><label>Pasadas</label><input id="preset_${type}_white_strokes" value="${p.white.strokes}"></div>
+                        <div class="form-group"><label>Additivos</label><input id="preset_${type}_white_additives" value="${p.white.additives}"></div>
+                    </div>
+                    <h5>Color</h5>
+                    <div class="form-row">
+                        <div class="form-group"><label>Mesh</label><input id="preset_${type}_color_mesh" value="${p.color.mesh}"></div>
+                        <div class="form-group"><label>Durometer</label><input id="preset_${type}_color_durometer" value="${p.color.durometer}"></div>
+                        <div class="form-group"><label>Pasadas</label><input id="preset_${type}_color_strokes" value="${p.color.strokes}"></div>
+                        <div class="form-group"><label>Additivos</label><input id="preset_${type}_color_additives" value="${p.color.additives}"></div>
+                    </div>
+                    <hr>`;
+            });
+            document.getElementById('presetForm').innerHTML = html;
+        }
+
+        function applyInkPreset() {
+            const type = document.getElementById('ink-type-select').value;
+            const preset = getPresets()[type];
+            if (!preset) return;
+            document.getElementById('ink-type').value = type === 'WATER' ? 'AQUAFLEX MAGNA' : type;
+            document.getElementById('temp').value = preset.temp;
+            document.getElementById('time').value = preset.time;
+            colorSequence.forEach(item => {
+                const input = document.getElementById(`ink-${item.id}`);
+                if (!input) return;
+                if (item.type === 'BLOCKER') {
+                    input.value = preset.blocker.name;
+                } else if (item.type === 'WHITE_BASE') {
+                    input.value = preset.white.name;
+                } else if (item.type === 'COLOR') {
+                    input.placeholder = preset.color.additives;
+                }
+            });
+            updateStations();
+            updateClientLogo();
+        }
+
+        function updateClientLogo() {
+            const cliente = document.getElementById('customer').value.toLowerCase();
+            const logoCliente = document.getElementById('logoCliente');
+            if (cliente.includes('nike')) {
+                logoCliente.innerHTML = `<path fill="#111" d="M27.16,19.5c-5.94,1.63-10.72,1.46-13.46-.54-7.02-5.12-1.79-15.56.11-18.67-3.4,3.82-6.78,7.64-9.41,11.81C.29,18.63-1.45,25.75,1.4,30.3c5.13,8.19,17.26,4.31,24.97.95L98.07,0,27.16,19.5Z"/>`;
+            } else if (cliente.includes('fanatics')) {
+                logoCliente.innerHTML = `
+                    <path fill="#211915" d="M60.38,11.14c-1.16,0-2.14.39-3.13,1.25v-.96c0-.08-.07-.15-.15-.15h-2.55c-.08,0-.15.07-.15.15v10.73c0,.08.07.15.15.15h2.64c.08,0,.15-.07.15-.15v-5.85c0-1.3,1.07-2.42,2.33-2.44h.05c1.65,0,2.24,1.3,2.24,2.51v5.78c0,.08.07.15.15.15h2.66c.08,0,.15-.07.15-.15v-5.8c0-3.12-1.82-5.22-4.54-5.22Z"/>
+                    <path fill="#211915" d="M52.66,11.26h-2.63c-.08,0-.15.07-.15.15v.46c-.89-.7-1.98-.81-3.03-.81h-.05c-3.33,0-5.48,2.18-5.48,5.55,0,1.75.53,3.21,1.54,4.2.96.94,2.3,1.44,3.88,1.44h.16c.97-.02,2.05-.04,2.97-.89v.81c0,.08.07.15.15.15h2.63c.08,0,.15-.07.15-.15v-10.75c0-.08-.07-.15-.15-.15ZM49.3,18.55c-.5.58-1.38.94-2.23.94-1.67,0-2.8-1.16-2.8-2.88s1.12-2.86,2.8-2.86c2.03,0,2.87,1.44,2.87,2.83,0,.76-.2,1.46-.64,1.98Z"/>
+                `;
+            } else {
+                logoCliente.innerHTML = '';
+            }
+        }
+
+        // ----------  PDF EXPORT  ----------
+        function exportPDF() {
+            const element = document.querySelector('.container');
+            html2canvas(element, { scale: 2 }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 210;
+                const pageHeight = 295;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                const fileName = `${document.getElementById('style').value || 'spec'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+                pdf.save(fileName);
+                showStatus('✅ PDF generado: ' + fileName, 'success');
+            });
+        }
+
+        // ----------  SAVE / LOAD / LIST  ----------
+        function saveSpec() {
+            const spec = {
+                customer: document.getElementById('customer').value,
+                style: document.getElementById('style').value,
+                colorway: document.getElementById('colorway').value,
+                season: document.getElementById('season').value,
+                pattern: document.getElementById('pattern').value,
+                po: document.getElementById('po').value,
+                sampleType: document.getElementById('sample-type').value,
+                nameTeam: document.getElementById('name-team').value,
+                gender: document.getElementById('gender').value,
+                inkType: document.getElementById('ink-type').value,
+                temp: document.getElementById('temp').value,
+                time: document.getElementById('time').value,
+                dimensions: document.getElementById('dimensions').value,
+                placement: document.getElementById('placement').value,
+                specialInstructions: document.getElementById('special-instructions').value,
+                colorSequence: colorSequence.map(item => ({
+                    id: item.id,
+                    type: item.type,
+                    name: document.getElementById(`ink-${item.id}`)?.value || item.type
+                })),
+                image: document.getElementById('imagePreview').src !== '' ? document.getElementById('imagePreview').src : null,
+                savedAt: new Date().toISOString()
+            };
+            const key = `spec_${spec.style || 'sin_estilo'}_${Date.now()}`;
+            localStorage.setItem(key, JSON.stringify(spec));
+            showStatus('✅ Spec guardada localmente', 'success');
+            showSavedSpecs();
+        }
+
+        function loadSpec() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    try {
+                        const spec = JSON.parse(ev.target.result);
+                        Object.keys(spec).forEach(k => {
+                            const el = document.getElementById(k);
+                            if (el) el.value = spec[k];
+                        });
+                        colorSequence = spec.colorSequence.map(item => ({ id: item.id, type: item.type }));
+                        renderColors();
+                        updateStations();
+                        if (spec.image) {
+                            document.getElementById('imagePreview').src = spec.image;
+                            document.getElementById('imagePreview').style.display = 'block';
+                        }
+                        showStatus('✅ Spec cargada correctamente', 'success');
+                    } catch (err) {
+                        showStatus('❌ Error al cargar spec', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function showSavedSpecs() {
+            const keys = Object.keys(localStorage).filter(k => k.startsWith('spec_'));
+            const specs = keys.map(k => JSON.parse(localStorage.getItem(k)));
+            let html = `
+                <div class="section no-print">
+                    <div class="section-title">SPECS GUARDADAS</div>
+                    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                        <thead><tr style="background:#f0f0f0;">
+                            <th>Estilo</th><th>Cliente</th><th>Guardado</th><th>Acciones</th>
+                        </tr></thead>
+                        <tbody>
+            `;
+            specs.forEach((sp, idx) => {
+                const key = keys[idx];
+                html += `
+                    <tr>
+                        <td>${sp.style || '-'}</td>
+                        <td>${sp.customer || '-'}</td>
+                        <td>${new Date(sp.savedAt).toLocaleString()}</td>
+                        <td>
+                            <button class="btn" onclick="loadLocalSpec('${key}')">Cargar</button>
+                            <button class="btn btn-danger" onclick="deleteLocalSpec('${key}')">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table></div>`;
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            div.id = 'savedSpecsPanel';
+            const old = document.getElementById('savedSpecsPanel');
+            if (old) old.remove();
+            document.querySelector('.container').appendChild(div);
+        }
+
+        function loadLocalSpec(key) {
+            const spec = JSON.parse(localStorage.getItem(key));
+            Object.keys(spec).forEach(k => {
+                const el = document.getElementById(k);
+                if (el) el.value = spec[k];
+            });
+            colorSequence = spec.colorSequence.map(item => ({ id: item.id, type: item.type }));
+            renderColors();
+            updateStations();
+            if (spec.image) {
+                document.getElementById('imagePreview').src = spec.image;
+                document.getElementById('imagePreview').style.display = 'block';
+            }
+            showStatus('✅ Spec cargada desde localStorage', 'success');
+        }
+
+        function deleteLocalSpec(key) {
+            if (confirm('¿Eliminar esta spec?')) {
+                localStorage.removeItem(key);
+                showSavedSpecs();
+                showStatus('✅ Spec eliminada', 'success');
+            }
+        }
+
+        // ----------  UTILS  ----------
+        function updateDateTime() {
+            const now = new Date();
+            const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+            const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'pm' : 'am'}`;
+            document.getElementById('update-date').textContent = dateStr;
+            document.getElementById('update-time').textContent = timeStr;
+            showStatus('Fecha y hora actualizadas', 'success');
+        }
+        function showStatus(msg, type) {
+            const el = document.getElementById('statusMessage');
+            el.textContent = msg;
+            el.className = 'status-message ' + (type === 'success' ? 'status-success' : 'status-error');
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        // ----------  INIT  ----------
+        document.addEventListener('DOMContentLoaded', function () {
+            updateDateTime();
+            renderColors();
+            updateStations();
+            applyInkPreset();
+        });
+
+        // ----------  PLACEHOLDERS  ----------
+        function exportToJSON() { alert('Función exportar no implementada aún'); }
+        function importFromJSON() { alert('Función importar no implementada aún'); }
+        function decodeStyleInfo() { /* ya está arriba */ }
+    </script>
+</body>
+</html>
